@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setuptools.setup(
     name="cvm_sqlite",
-    version="1.0.1",
+    version="0.0.3",
     author="Eduardo Ramon Resser",
     author_email="eduresser@gmail.com",
     description="A Python tool for downloading, processing, and storing data from the Brazilian Securities and Exchange Commission (CVM - Comissão de Valores Mobiliários) in a SQLite database.",
@@ -32,6 +32,7 @@ setuptools.setup(
         'beautifulsoup4>=4.12.3',
         'pandas>=2.2.3',
         'requests>=2.32.3',
+        'setuptools>=75.5.0',
         'tqdm>=4.67.0'
     ]
 )

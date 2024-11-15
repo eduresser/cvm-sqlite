@@ -1,0 +1,72 @@
+# CVM-SQLite
+
+CVM-SQLite is a Python tool for downloading, processing, and storing data from the Brazilian Securities and Exchange Commission (CVM - Comissão de Valores Mobiliários) in a SQLite database.
+
+## Features
+
+- Automatically downloads data from the CVM repository
+- Processes and structures data according to provided schemas
+- Stores data in a SQLite database
+- Supports incremental updates
+
+## Installation
+
+You can install the CVM Data Processor directly from GitHub using pip:
+
+```bash
+pip install cvm-sqlite
+```
+
+## Usage
+
+```python
+from cvm_data_processor import CVMDataProcessor
+
+# Initialize the processor
+processor = CVMDataProcessor(
+    db_path='path/to/your/database.db',
+    cvm_url='https://dados.cvm.gov.br/dados/',
+    verbose=True
+)
+
+# Run the processing and store the database object
+db = processor.process()
+
+# Now you can use the db object to run queries
+results = db.query("""
+    SELECT
+        CAST(STRFTIME('%Y', DT_REFER) AS INTEGER) AS exercise,
+        DENOM_CIA AS company,
+        VL_CONTA AS net_income
+    FROM dfp_cia_aberta_DRE
+    WHERE CNPJ_CIA = '00.000.000/0001-91'
+        AND GRUPO_DFP = 'DF Consolidado - Demonstração do Resultado'
+        AND ORDEM_EXERC = 'ÚLTIMO'
+        AND (
+            (CD_CONTA = '3.09' AND STRFTIME('%Y', DT_REFER) < '2020')
+            OR (CD_CONTA = '3.11' AND STRFTIME('%Y', DT_REFER) >= '2020')
+        )
+    ORDER BY exercise
+""")
+
+# Process the results
+for row in results:
+    print(row)
+```
+
+## Parameters
+
+`db_path`: Path to the SQLite database file.
+`cvm_url`: URL of the CVM directory (default: https://dados.cvm.gov.br/dados/).
+`verbose`: Enables detailed output (optional).
+
+### How it works
+
+If the database doesn't exist, it will be created.
+CVM files are downloaded and processed.
+Data is inserted or updated in the SQLite database.
+If the database already exists, only necessary updates will be made.
+
+# License
+
+This project is licensed under the MIT License.

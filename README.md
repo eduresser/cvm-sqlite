@@ -63,9 +63,9 @@ for row in results:
 ### How it works
 
 If the database doesn't exist, it will be created.
-CVM files are downloaded and processed.
-Data is inserted or updated in the SQLite database.
-If the database already exists, only necessary updates will be made.
+From the URL provided, all files and directories that can be accessed from this URL will be mapped.
+The tables are created according to the schema file provided by the CVM itself.
+If the database already exists, only necessary updates will be made, processing only new files or those whose last modification date has changed.
 
 # License
 

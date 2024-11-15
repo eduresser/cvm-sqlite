@@ -32,7 +32,6 @@ setuptools.setup(
         'beautifulsoup4>=4.12.3',
         'pandas>=2.2.3',
         'requests>=2.32.3',
-        'setuptools>=75.5.0',
         'tqdm>=4.67.0'
     ]
 )

@@ -48,17 +48,13 @@ results = db.query("""
         )
     ORDER BY exercise
 """)
-
-# Process the results
-for row in results:
-    print(row)
 ```
 
 ## Parameters
 
-`db_path`: Path to the SQLite database file.
-`cvm_url`: URL of the CVM directory (default: https://dados.cvm.gov.br/dados/).
-`verbose`: Enables detailed output (optional).
+- `db_path`: Path to the SQLite database file.
+- `cvm_url`: URL of the CVM directory (default: https://dados.cvm.gov.br/dados/).
+- `verbose`: Enables detailed output (optional).
 
 ### How it works
 

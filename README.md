@@ -56,7 +56,7 @@ results = db.query("""
 - `cvm_url`: URL of the CVM directory (default: https://dados.cvm.gov.br/dados/).
 - `verbose`: Enables detailed output (optional).
 
-### How it works
+## How it works
 
 If the database doesn't exist, it will be created.
 From the URL provided, all files and directories that can be accessed from this URL will be mapped.

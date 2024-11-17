@@ -87,10 +87,8 @@ class CVMDataProcessor:
             meta = df_category.loc[df_category['type'] == 'META', 'url'].tolist()
             dados = df_category.loc[df_category['type'] == 'DADOS', 'url'].tolist()
 
-            if not meta:
-                meta = self._fetch_urls_by_category_and_file_type(category, 'META')
-            if not dados:
-                dados = self._fetch_urls_by_category_and_file_type(category, 'DADOS')
+            if not meta: meta = self._fetch_urls_by_category_and_file_type(category, 'META')
+            if not dados: dados = self._fetch_urls_by_category_and_file_type(category, 'DADOS')
 
             if meta and dados:
                 schema_files = self._download_schema_files(meta)

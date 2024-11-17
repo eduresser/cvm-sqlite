@@ -56,6 +56,8 @@ results = processor.query("""
 - `cvm_url`: URL of the CVM directory (optional, default: https://dados.cvm.gov.br/dados/CIA_ABERTA).
 - `verbose`: Enables detailed output (optional, default: `False`).
 
+**Note:** It is mandatory that the CVM directory includes a **META** folder at any level, which contains the table schemas.
+
 ## How it works
 
 If the database doesn't exist, it will be created.

@@ -6,4 +6,4 @@ processor = CVMDataProcessor(
     verbose=False
 )
 
-processor.process()
+processor.run()

@@ -7,7 +7,7 @@ processor = CVMDataProcessor(
     verbose=True
 )
 
-processor.process()
+processor.run()
 
 results = processor.query("""
     SELECT

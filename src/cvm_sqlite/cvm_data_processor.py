@@ -1,15 +1,15 @@
 import os
 import pandas as pd
 from tqdm import tqdm
-from typing import Optional, List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any
 from .database import Database
 from .file_manager import FileManager
 from .utils import associate_tables_and_schemas, create_df_and_fit_to_schema, create_table_query, extract_table_name_from_file, extract_table_name_from_schema, get_files
 
 class CVMDataProcessor:
-    def __init__(self, db_path: str, cvm_url: Optional[str] = None, verbose: bool = False):
+    def __init__(self, db_path: str, cvm_url: str = 'https://dados.cvm.gov.br/dados/', verbose: bool = False):
         self.db_path = db_path
-        self.cvm_url = cvm_url + '/' if not cvm_url.endswith('/') else ''
+        self.cvm_url = cvm_url + '/' if not cvm_url.endswith('/') else cvm_url
         self.verbose = verbose
         self.db_exists = os.path.isfile(self.db_path)
         self.db = Database(db_path, self.verbose)
@@ -17,7 +17,7 @@ class CVMDataProcessor:
 
     def process(self) -> None:
         if not self.cvm_url.startswith('https://dados.cvm.gov.br/dados/'):
-            print("Error: The URL provided does not belong to a CVM Data directory. The URL must start with 'https://dados.cvm.gov.br/dados/'")
+            print(f"Error: The URL '{self.cvm_url}' does not belong to a CVM Data directory. The URL must start with 'https://dados.cvm.gov.br/dados/'")
             return
         
         self._handle_database()
@@ -26,9 +26,14 @@ class CVMDataProcessor:
 
     def query(self, query: str) -> List[Tuple[Any, ...]]:
         self.db._connect()
-        result = self.db.query(query)
-        self.db._disconnect()
-        return result
+        try:
+            result = self.db.query(query)
+            return result
+        except Exception as e:
+            print(str(e))
+            return []
+        finally:
+            self.db._disconnect()
 
     def _handle_database(self) -> None:
         print(f'Creating or updating {self.db_path}...\n')

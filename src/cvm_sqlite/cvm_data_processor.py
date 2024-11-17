@@ -11,9 +11,9 @@ class CVMDataProcessor:
         self.db_path = db_path
         self.cvm_url = cvm_url + '/' if not cvm_url.endswith('/') else cvm_url
         self.verbose = verbose
-        self.db_exists = os.path.isfile(self.db_path)
+
         self.db = Database(db_path, self.verbose)
-        self.file_manager = FileManager()
+        self.file_manager = None
 
     def process(self) -> None:
         if not self.cvm_url.startswith('https://dados.cvm.gov.br/dados/'):
@@ -22,7 +22,6 @@ class CVMDataProcessor:
         
         self._handle_database()
         self.db._disconnect()
-        self.file_manager.cleanup()
 
     def query(self, query: str) -> List[Tuple[Any, ...]]:
         self.db._connect()
@@ -40,6 +39,8 @@ class CVMDataProcessor:
         df_files = self._get_new_or_upgradable_files()
 
         if df_files.shape[0] > 0:
+            self.file_manager = FileManager()
+            
             try:
                 self.db._delete_existing_records(df_files, 'files', 'name')
                 self.db._insert_dataframe(df_files, 'files')
@@ -47,6 +48,7 @@ class CVMDataProcessor:
                 self.db._create_files_table(df_files)
 
             self._process_files(df_files)
+            self.file_manager.cleanup(remove_temp_dir=True)
             print(f'\n{self.db_path} is up to date.')
         else:
             print('Nothing to update.')
@@ -91,6 +93,7 @@ class CVMDataProcessor:
             if meta and dados:
                 schema_files = self._download_schema_files(meta)
                 self._process_data_files(dados, schema_files)
+                self.file_manager.cleanup()
                 self.db._update_files_status(dados + meta, 'url', 'COMPLETE')
 
     def _download_schema_files(self, meta_urls: List[str]) -> List[str]:

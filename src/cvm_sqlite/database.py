@@ -46,15 +46,12 @@ class Database:
 
     def _insert_dataframe(self, df: pd.DataFrame, table_name: str) -> None:
         df.to_sql(table_name, self.conn, if_exists='append', index=False)
-        if self.verbose and table_name != 'files: ':
-            print(f"{df.shape[0]} new records were inserted into table '{table_name}'.")
-        else:
-            print(f"{df.shape[0]} files founded in the given CVM directory to insert orupdate.")
+        if self.verbose: print(f"{df.shape[0]} new records were inserted into table '{table_name}'.")
 
 
     def _create_files_table(self, df_files: pd.DataFrame) -> None:
         df_files.to_sql('files', self.conn, if_exists='replace', index=False)
-        print(f"{df_files.shape[0]} files founded in the given CVM directory to insert.")
+        print(f"{df_files.shape[0]} files founded in the given CVM directory.")
 
     def _update_files_status(self, names: List[str], column: str, new_status: str) -> None:
         formatted_names = ", ".join([f"'{name}'" for name in names])

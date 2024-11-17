@@ -39,5 +39,14 @@ class FileManager:
         except Exception as e:
             print(f"Error deleting file: {str(e)}")
 
-    def cleanup(self) -> None:
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    def cleanup(self, remove_temp_dir: bool = False) -> None:
+        for root, dirs, files in os.walk(self.temp_dir, topdown=False):
+            for file in files:
+                os.remove(os.path.join(root, file))
+            for dir in dirs:
+                dir_path = os.path.join(root, dir)
+                if not os.listdir(dir_path):
+                    os.rmdir(dir_path)
+        
+        if remove_temp_dir:
+            shutil.rmtree(self.temp_dir)

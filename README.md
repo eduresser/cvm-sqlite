@@ -29,11 +29,11 @@ processor = CVMDataProcessor(
     verbose=True
 )
 
-# Run the processing and store the database object
-db = processor.process()
+# Run the processing
+processor.process()
 
-# Now you can use the db object to run queries
-results = db.query("""
+# Now you can use the processor object to run queries
+results = processor.query("""
     SELECT
         CAST(STRFTIME('%Y', DT_REFER) AS INTEGER) AS exercise,
         DENOM_CIA AS company,

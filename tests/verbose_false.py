@@ -3,7 +3,7 @@ from cvm_sqlite import CVMDataProcessor
 
 processor = CVMDataProcessor(
     db_path='cvm_data/database.db',
-    cvm_url='https://dados.cvm.gov.br/dados/CIA_ABERTA',
+    cvm_url='https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/CGVN/',
     verbose=False
 )
 

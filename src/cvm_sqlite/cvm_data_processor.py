@@ -42,6 +42,7 @@ class CVMDataProcessor:
                 self.db._create_files_table(df_files)
 
             self._process_files(df_files)
+            print(f'\n{self.db_path} is up to date.')
         else:
             print('Nothing to update.')
 
@@ -63,19 +64,29 @@ class CVMDataProcessor:
         if new_row['url'] not in current_df['url'].values: return True
         current_row = current_df[current_df['url'] == new_row['url']]
         return current_row['last_update'].iloc[0] != new_row['last_update']
+    
+    def _fetch_urls_by_category_and_file_type(self, category: str, file_type: str) -> List[str]:
+        try:
+            results = self.db.query(f"SELECT url FROM files WHERE category = ? AND type = ?", (category, file_type))
+            return [result[0] for result in results] if results else []
+        except Exception:
+            return []
 
     def _process_files(self, df_files: pd.DataFrame) -> None:
-        categories = df_files['category'].unique()
-        for category in categories:
+        for category in df_files['category'].unique():
             df_category = df_files[df_files['category'] == category]
-            meta = df_category[df_category['type'] == 'META']['url'].tolist()
-            dados = df_category[df_category['type'] == 'DADOS']['url'].tolist()
+            meta = df_category.loc[df_category['type'] == 'META', 'url'].tolist()
+            dados = df_category.loc[df_category['type'] == 'DADOS', 'url'].tolist()
+
+            if not meta:
+                meta = self._fetch_urls_by_category_and_file_type(category, 'META')
+            if not dados:
+                dados = self._fetch_urls_by_category_and_file_type(category, 'DADOS')
 
             if meta and dados:
                 schema_files = self._download_schema_files(meta)
                 self._process_data_files(dados, schema_files)
-                self.db._update_files_status(dados, 'url', 'COMPLETE')
-                self.db._update_files_status(meta, 'url', 'COMPLETE')
+                self.db._update_files_status(dados + meta, 'url', 'COMPLETE')
 
     def _download_schema_files(self, meta_urls: List[str]) -> List[str]:
         schema_files = []
@@ -107,5 +118,6 @@ class CVMDataProcessor:
         if self.verbose: print(f"\nInserting data from '{os.path.basename(table)}'.")
         df = create_df_and_fit_to_schema(table, schema)
         self.db._create_table_if_not_exists(table_name, schema)
+        self.db._delete_existing_records(df, table_name, 'source_file')
         self.db._insert_dataframe(df, table_name)
         self.file_manager.delete_file(table)

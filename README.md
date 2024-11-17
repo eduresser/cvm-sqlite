@@ -25,7 +25,7 @@ from cvm_data_processor import CVMDataProcessor
 # Initialize the processor
 processor = CVMDataProcessor(
     db_path='path/to/your/database.db',
-    cvm_url='https://dados.cvm.gov.br/dados/',
+    cvm_url='https://dados.cvm.gov.br/dados/CIA_ABERTA',
     verbose=True
 )
 

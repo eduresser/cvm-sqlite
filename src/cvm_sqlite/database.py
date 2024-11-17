@@ -40,13 +40,17 @@ class Database:
         affected_rows = self.cursor.rowcount
         self.conn.commit()
         if self.verbose and affected_rows > 0:
-            files = f"'{unique_values[0]}'." if len(unique_values) < 2 else f"\n - {'\n - '.join(map(str, unique_values))}"
-            print(f"{affected_rows} old records were deleted related to file(s): {files}\n")
+            files = f"'{unique_values[0]}'." if len(unique_values) < 2 else f"\n - {'\n - '.join(map(str, unique_values))}\n"
+            print(f"{affected_rows} old records were deleted related to file(s): {files}")
         return affected_rows
 
     def _insert_dataframe(self, df: pd.DataFrame, table_name: str) -> None:
         df.to_sql(table_name, self.conn, if_exists='append', index=False)
-        if self.verbose: print(f"{df.shape[0]} new records inserted into table '{table_name}'.")
+        if self.verbose and table_name != 'files: ':
+            print(f"{df.shape[0]} new records were inserted into table '{table_name}'.")
+        else:
+            print(f"{df.shape[0]} files founded in the given CVM directory to insert orupdate.")
+
 
     def _create_files_table(self, df_files: pd.DataFrame) -> None:
         df_files.to_sql('files', self.conn, if_exists='replace', index=False)

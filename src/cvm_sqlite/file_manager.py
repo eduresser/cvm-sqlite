@@ -1,6 +1,7 @@
 import os
 import tempfile
 import requests
+import shutil
 import zipfile
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -39,9 +40,4 @@ class FileManager:
             print(f"Error deleting file: {str(e)}")
 
     def cleanup(self) -> None:
-        for root, dirs, files in os.walk(self.temp_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        os.rmdir(self.temp_dir)
+        shutil.rmtree(self.temp_dir, ignore_errors=True)

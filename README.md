@@ -20,7 +20,7 @@ pip install cvm-sqlite
 ## Usage
 
 ```python
-from cvm_data_processor import CVMDataProcessor
+from cvm_sqlite import CVMDataProcessor
 
 # Initialize the processor
 processor = CVMDataProcessor(

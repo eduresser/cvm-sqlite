@@ -6,8 +6,10 @@ from .database import Database
 from .file_manager import FileManager
 from .utils import associate_tables_and_schemas, create_df_and_fit_to_schema, create_table_query, extract_table_name_from_file, extract_table_name_from_schema, get_files
 
+CVM_PREFIX = 'https://dados.cvm.gov.br/dados/'
+
 class CVMDataProcessor:
-    def __init__(self, db_path: str, cvm_url: str = 'https://dados.cvm.gov.br/dados/', verbose: bool = False):
+    def __init__(self, db_path: str, cvm_url: str = CVM_PREFIX + 'CIA_ABERTA', verbose: bool = False):
         self.db_path = db_path
         self.cvm_url = cvm_url + '/' if not cvm_url.endswith('/') else cvm_url
         self.verbose = verbose
@@ -15,9 +17,9 @@ class CVMDataProcessor:
         self.db = Database(db_path, self.verbose)
         self.file_manager = None
 
-    def process(self) -> None:
-        if not self.cvm_url.startswith('https://dados.cvm.gov.br/dados/'):
-            print(f"Error: The URL '{self.cvm_url}' does not belong to a CVM Data directory. The URL must start with 'https://dados.cvm.gov.br/dados/'")
+    def run(self) -> None:
+        if not self.cvm_url.startswith(CVM_PREFIX):
+            print(f"Error: The URL '{self.cvm_url}' does not belong to a CVM Data directory. The URL must start with '{CVM_PREFIX}'")
             return
         
         self._handle_database()
@@ -40,7 +42,7 @@ class CVMDataProcessor:
 
         if df_files.shape[0] > 0:
             self.file_manager = FileManager()
-            
+
             try:
                 self.db._delete_existing_records(df_files, 'files', 'name')
                 self.db._insert_dataframe(df_files, 'files')

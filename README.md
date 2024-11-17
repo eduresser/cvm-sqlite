@@ -29,8 +29,8 @@ processor = CVMDataProcessor(
     verbose=True
 )
 
-# Run the processing
-processor.process()
+# Run the processor
+processor.run()
 
 # Now you can use the processor object to run queries
 results = processor.query("""
@@ -53,8 +53,8 @@ results = processor.query("""
 ## Parameters
 
 - `db_path`: Path to the SQLite database file.
-- `cvm_url`: URL of the CVM directory (default: https://dados.cvm.gov.br/dados/).
-- `verbose`: Enables detailed output (optional).
+- `cvm_url`: URL of the CVM directory (optional, default: https://dados.cvm.gov.br/dados/CIA_ABERTA).
+- `verbose`: Enables detailed output (optional, default: `False`).
 
 ## How it works
 

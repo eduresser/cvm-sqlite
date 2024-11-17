@@ -9,6 +9,45 @@ CVM-SQLite is a Python tool for downloading, processing, and storing data from t
 - Stores data in a SQLite database
 - Supports incremental updates
 
+## What can be obtained with CVM-SQLite?
+
+CVM-SQLite facilitates access to a comprehensive range of official documents from various financial entities regulated by the Brazilian Securities and Exchange Commission (CVM). These include:
+
+### `CIA_ABERTA` (Companhias Abertas) - Public Companies
+
+- DFP (Demonstrações Financeiras Padronizadas) - Standardized Financial Statements
+- ITR (Informações Trimestrais) - Quarterly Information Reports
+- FRE (Formulário de Referência) - Reference Form
+- FCA (Formulário Cadastral) - Registration Form
+- Additional relevant documentation
+
+### `FI` (Fundos de Investimento) - Investment Funds
+
+- Financial Statements
+- Periodic Reports
+- Balance Sheets
+- CDA (Composição e Diversificação das Aplicações) - Portfolio Composition and Diversification
+- Other pertinent fund documentation
+
+### `FII` (Fundos de Investimento Imobiliário) - REIT (Real Estate Investment Trusts)
+
+- Periodic Reports
+- DFIN (Demonstrações Financeiras de Fundos de Investimentos) - Investment Fund Financial Statements
+
+### `SECURIT` (Securitizadoras) - Securitization Companies
+
+- CRA (Certificado de Recebíveis do Agronegócio) - Agribusiness Receivables Certificate
+- CRI (Certificado de Recebíveis Imobiliários) - Real Estate Receivables Certificate
+- OTS (Operações de Transferência de Saldos) - Balance Transfer Operations
+
+### Additional Financial Instruments and Entities
+
+- Other investment funds
+- Equity Crowdfunding Platforms
+- Auditing Reports
+- Registration relating to Foreign Companies operating in Brazil
+- Other relevant financial and regulatory documents
+
 ## Installation
 
 You can install the CVM Data Processor directly from GitHub using pip:

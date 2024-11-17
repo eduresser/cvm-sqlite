@@ -48,7 +48,6 @@ class Database:
         df.to_sql(table_name, self.conn, if_exists='append', index=False)
         if self.verbose: print(f"{df.shape[0]} new records were inserted into table '{table_name}'.")
 
-
     def _create_files_table(self, df_files: pd.DataFrame) -> None:
         df_files.to_sql('files', self.conn, if_exists='replace', index=False)
         print(f"{df_files.shape[0]} files founded in the given CVM directory.")

@@ -105,7 +105,7 @@ class CVMDataProcessor:
         return schema_files
 
     def _process_data_files(self, data_urls: List[str], schema_files: List[str]) -> None:
-        tqdm_desc = f'Processing {extract_table_name_from_file(data_urls[0])}'
+        tqdm_desc = f'Processing {extract_table_name_from_file(data_urls[0])} files'
         for data_url in tqdm(data_urls, disable=self.verbose, desc=tqdm_desc):
             table_files = self._download_and_extract(data_url)
             tables_and_schemas = associate_tables_and_schemas(table_files, schema_files)

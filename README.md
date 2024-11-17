@@ -50,7 +50,7 @@ CVM-SQLite facilitates access to a comprehensive range of official documents fro
 
 ## Installation
 
-You can install the CVM Data Processor directly from GitHub using pip:
+You can install the CVM-SQLite directly from GitHub using pip:
 
 ```bash
 pip install cvm-sqlite

@@ -84,7 +84,7 @@ def create_table_query(schema_path: str) -> str:
             field_dict = {}
             for entry in entries:
                 if set(entry) != set('-'):
-                    key, value = entry.split(':')
+                    key, value = entry.split(':', 1)
                     field_dict[key.strip()] = value.strip()
             result.append(field_dict)
         return result
@@ -160,7 +160,7 @@ def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.
             match = re.search(r'\((\d+)\)', type_def)
             if match:
                 max_length = int(match.group(1))
-                df[col] = df[col].apply(lambda x: x[:max_length] if x is not None else None)
+                df[col] = df[col].apply(lambda x: x[:max_length] if isinstance(x, str) else None)
 
     return df
 

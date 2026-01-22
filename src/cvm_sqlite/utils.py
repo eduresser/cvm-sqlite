@@ -160,7 +160,7 @@ def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.
             match = re.search(r'\((\d+)\)', type_def)
             if match:
                 max_length = int(match.group(1))
-                df[col] = df[col].apply(lambda x: x[:max_length] if isinstance(x, str) else None)
+                df[col] = df[col].apply(lambda x: str(x)[:max_length] if x is not None else None)
 
     return df
 

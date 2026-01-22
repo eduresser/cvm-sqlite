@@ -95,7 +95,7 @@ def create_table_query(schema_path: str) -> str:
             field_dict = {}
             for entry in entries:
                 if set(entry) != set('-'):
-                    key, value = entry.split(':', 1)
+                    key, value = entry.split(':')
                     field_dict[key.strip()] = value.strip()
             result.append(field_dict)
         return result
@@ -156,8 +156,38 @@ def _is_nullable(x) -> bool:
         return True
     return False
 
+def _create_column_mapping(df_columns: List[str], schema_columns: List[str]) -> Dict[str, str]:
+    mapping = {}
+    df_cols_lower = {col.lower(): col for col in df_columns}
+    
+    for schema_col in schema_columns:
+        if schema_col.lower() in df_cols_lower:
+            mapping[df_cols_lower[schema_col.lower()]] = schema_col
+    
+    # Segundo, verifica se um está contido no outro
+    remaining_df_cols = [col for col in df_columns if col not in mapping]
+    remaining_schema_cols = [col for col in schema_columns if col not in mapping.values()]
+    
+    for df_col in remaining_df_cols:
+        df_lower = df_col.lower()
+        for schema_col in remaining_schema_cols:
+            schema_lower = schema_col.lower()
+            if df_lower in schema_lower or schema_lower in df_lower:
+                if schema_col not in mapping.values():
+                    mapping[df_col] = schema_col
+                    break
+    
+    return mapping
+
+
 def _fit_chunk_to_schema(df: pd.DataFrame, column_defs: List[Tuple[str, str]], column_types: Dict[str, str], source_file: str) -> pd.DataFrame:
     df['source_file'] = source_file
+    
+    schema_columns = list(column_types.keys())
+    column_mapping = _create_column_mapping(list(df.columns), schema_columns)
+    
+    if column_mapping:
+        df = df.rename(columns=column_mapping)
 
     for col in column_types:
         if col not in df.columns:

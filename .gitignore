@@ -75,3 +75,9 @@ build/
 dist/
 src/*.egg-info
 htmlcov/
+
+# Cache
+.cache/
+
+#Cursor
+.cursor/

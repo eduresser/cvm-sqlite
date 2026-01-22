@@ -1,10 +1,11 @@
+import gc
 import os
 import pandas as pd
 from tqdm import tqdm
 from typing import List, Dict, Tuple, Any
 from .database import Database
 from .file_manager import FileManager
-from .utils import associate_tables_and_schemas, create_df_and_fit_to_schema, create_table_query, extract_table_name_from_file, extract_table_name_from_schema, get_files
+from .utils import associate_tables_and_schemas, create_df_chunks_and_fit_to_schema, create_table_query, extract_table_name_from_file, extract_table_name_from_schema, get_files
 
 CVM_PREFIX = 'https://dados.cvm.gov.br/dados/'
 
@@ -44,9 +45,12 @@ class CVMDataProcessor:
             self.file_manager = FileManager()
 
             try:
+                self.db.begin_transaction()
                 self.db._delete_existing_records(df_files, 'files', 'name')
                 self.db._insert_dataframe(df_files, 'files')
+                self.db.commit()
             except:
+                self.db.rollback()
                 self.db._create_files_table(df_files)
 
             self._process_files(df_files)
@@ -56,15 +60,24 @@ class CVMDataProcessor:
             print('Nothing to update.')
 
     def _get_new_or_upgradable_files(self) -> pd.DataFrame:
+        """Identifica arquivos novos ou atualizados com gerenciamento de memória."""
         new_df_files = get_files(self.cvm_url)
         try:
             current_db_files = self.db.query("SELECT * FROM files")
             current_df_files = pd.DataFrame(current_db_files, columns=new_df_files.columns)
+            del current_db_files  # Libera lista original
             current_df_files['last_update'] = pd.to_datetime(current_df_files['last_update'])
 
             diff_df = new_df_files[new_df_files.apply(lambda row: self._row_diff(row, current_df_files), axis=1)]
             pending_df = current_df_files[current_df_files['status'] == 'PENDING']
+            
+            del current_df_files  # Libera DataFrame intermediário
+            gc.collect()
+            
             result_df = pd.concat([diff_df, pending_df], ignore_index=True)
+            del diff_df, pending_df
+            gc.collect()
+            
             return result_df.drop_duplicates(keep='first')
         except:
             return new_df_files
@@ -92,9 +105,11 @@ class CVMDataProcessor:
 
             if meta and dados:
                 schema_files = self._download_schema_files(meta)
-                self._process_data_files(dados, schema_files)
+                completed_urls = self._process_data_files(dados, schema_files)
                 self.file_manager.cleanup()
-                self.db._update_files_status(dados + meta, 'url', 'COMPLETE')
+                # Só marca como COMPLETE os URLs que foram processados com sucesso
+                if completed_urls:
+                    self.db._update_files_status(completed_urls + meta, 'url', 'COMPLETE')
 
     def _download_schema_files(self, meta_urls: List[str]) -> List[str]:
         schema_files = []
@@ -102,13 +117,27 @@ class CVMDataProcessor:
             schema_files.extend(self._download_and_extract(schema_url))
         return schema_files
 
-    def _process_data_files(self, data_urls: List[str], schema_files: List[str]) -> None:
+    def _process_data_files(self, data_urls: List[str], schema_files: List[str]) -> List[str]:
         tqdm_desc = f'Processing {extract_table_name_from_file(data_urls[0])} files'
+        completed_urls = []
+        
         for data_url in tqdm(data_urls, disable=self.verbose, desc=tqdm_desc):
-            table_files = self._download_and_extract(data_url)
-            tables_and_schemas = associate_tables_and_schemas(table_files, schema_files)
-            for table_and_schema in tables_and_schemas:
-                self._process_table(table_and_schema)
+            table_files = None
+            tables_and_schemas = None
+            try:
+                table_files = self._download_and_extract(data_url)
+                tables_and_schemas = associate_tables_and_schemas(table_files, schema_files)
+                for table_and_schema in tables_and_schemas:
+                    self._process_table(table_and_schema)
+                completed_urls.append(data_url)
+            except Exception as e:
+                if self.verbose: print(f"Failed to process {data_url}: {str(e)}")
+            finally:
+                if table_files is not None: del table_files
+                if tables_and_schemas is not None: del tables_and_schemas
+                gc.collect()
+        
+        return completed_urls
 
     def _download_and_extract(self, url: str) -> List[str]:
         file_path = self.file_manager.download_file(url)
@@ -123,9 +152,31 @@ class CVMDataProcessor:
         table = table_and_schema['table']
         schema = create_table_query(table_and_schema['schema'])
         table_name = extract_table_name_from_schema(schema)
-        if self.verbose: print(f"\nInserting data from '{os.path.basename(table)}'.")
-        df = create_df_and_fit_to_schema(table, schema)
+        source_file = os.path.basename(table)
+        if self.verbose: print(f"\nInserting data from '{source_file}'.")
+        
         self.db._create_table_if_not_exists(table_name, schema)
-        self.db._delete_existing_records(df, table_name, 'source_file')
-        self.db._insert_dataframe(df, table_name)
-        self.file_manager.delete_file(table)
+        
+        # Transação atômica: ou insere tudo ou nada
+        self.db.begin_transaction()
+        try:
+            # Deleta registros existentes deste source_file antes de inserir
+            self.db._delete_by_source_file(table_name, source_file)
+            
+            total_rows = 0
+            for df_chunk in create_df_chunks_and_fit_to_schema(table, schema):
+                self.db._insert_dataframe(df_chunk, table_name)
+                total_rows += df_chunk.shape[0]
+                del df_chunk
+                gc.collect()
+            
+            # Commit apenas após todos os chunks serem inseridos
+            self.db.commit()
+            if self.verbose: print(f"Total: {total_rows} records processed.")
+        except Exception as e:
+            # Se falhar em qualquer chunk, desfaz tudo
+            self.db.rollback()
+            print(f"Error processing '{source_file}': {str(e)}. Transaction rolled back.")
+            raise
+        finally:
+            self.file_manager.delete_file(table)

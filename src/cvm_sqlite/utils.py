@@ -1,10 +1,13 @@
+import gc
 import pandas as pd
 import re
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Iterator, Optional
 from urllib.parse import urljoin
+
+CSV_CHUNK_SIZE = 10000
 
 def extract_table_name_from_file(string: str) -> str:
     condition = lambda x: x != 'cad' and x != 'meta' and x != 'txt' and not x.isnumeric()
@@ -21,7 +24,7 @@ def get_files(url: str) -> pd.DataFrame:
         if '/META/' in url: return 'META'
         return None
 
-    def get_date_by_item(item) -> datetime:
+    def get_date_by_item(item) -> Optional[datetime]:
         try:
             date_size = item.next_sibling.strip().split()
             date_str = ' '.join(date_size[:2])
@@ -31,9 +34,12 @@ def get_files(url: str) -> pd.DataFrame:
 
     def map_directory(url: str) -> Tuple[List[Dict], List[str]]:
         try:
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            items = soup.find('pre').find_all('a')
+            response = requests.get(url, timeout=30)
+            soup = BeautifulSoup(response.text, 'lxml')
+            pre_element = soup.find('pre')
+            if not pre_element:
+                return [], []
+            items = pre_element.find_all('a')
             files = []
             folders = []
             for item in items[1:]:
@@ -50,20 +56,25 @@ def get_files(url: str) -> pd.DataFrame:
                         'last_update': get_date_by_item(item),
                         'status': 'PENDING'
                     })
+            del soup, response
             return files, folders
         except:
             return [], []
 
-    def map_files(url: str) -> List[Dict]:
-        all_files = []
-        files, folders = map_directory(url)
+    all_files = []
+    folders_to_process = [url]
+    
+    while folders_to_process:
+        current_url = folders_to_process.pop(0)
+        files, subfolders = map_directory(current_url)
         all_files.extend(files)
-        for folder in folders:
-            all_files.extend(map_files(folder))
-        return all_files
-
-    files = map_files(url)
-    return pd.DataFrame(files)
+        folders_to_process.extend(subfolders)
+        del files, subfolders
+    
+    result = pd.DataFrame(all_files)
+    del all_files
+    gc.collect()
+    return result
 
 def create_table_query(schema_path: str) -> str:
     def read_text_file(path: str) -> str:
@@ -117,10 +128,8 @@ def create_table_query(schema_path: str) -> str:
     structured_schema = struct_schema(raw_schema)
     return generate_query(table_name, structured_schema)
 
-def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.DataFrame:
-    df = pd.read_csv(table_path, encoding='ISO-8859-1', sep=';', quoting=3, on_bad_lines='skip', low_memory=False)
-    df['source_file'] = table_path.split('/')[-1]
-
+def _parse_column_defs(create_table_query: str) -> Tuple[List[Tuple[str, str]], Dict[str, str]]:
+    """Extrai definições de colunas e tipos do schema."""
     column_defs = re.findall(r'(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)', create_table_query)[1:]
     
     column_types = {}
@@ -135,6 +144,20 @@ def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.
             column_types[col] = 'datetime64[ns]'
         else:
             column_types[col] = 'object'
+    
+    return column_defs, column_types
+
+def _is_nullable(x) -> bool:
+    if x is None:
+        return True
+    if pd.isna(x):
+        return True
+    if isinstance(x, str) and x.lower() in ('nan', 'none', 'null', ''):
+        return True
+    return False
+
+def _fit_chunk_to_schema(df: pd.DataFrame, column_defs: List[Tuple[str, str]], column_types: Dict[str, str], source_file: str) -> pd.DataFrame:
+    df['source_file'] = source_file
 
     for col in column_types:
         if col not in df.columns:
@@ -151,18 +174,45 @@ def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.
             elif dtype == 'float64':
                 df[col] = pd.to_numeric(df[col], errors='coerce')
             else:
-                df[col] = df[col].where(pd.notnull(df[col]), None)
-                df[col] = df[col].where(df[col] != 'None', None)
+                df[col] = df[col].apply(lambda x: None if _is_nullable(x) else x)
 
     for col, type_def in column_defs:
         if 'CHAR' in type_def or 'VARCHAR' in type_def:
-            df[col] = df[col].apply(lambda x: str(x) if pd.notnull(x) and x is not None else None)
+            df[col] = df[col].apply(lambda x: None if _is_nullable(x) else str(x))
             match = re.search(r'\((\d+)\)', type_def)
             if match:
                 max_length = int(match.group(1))
-                df[col] = df[col].apply(lambda x: str(x)[:max_length] if x is not None else None)
+                df[col] = df[col].apply(lambda x: None if _is_nullable(x) else str(x)[:max_length])
 
     return df
+
+def create_df_chunks_and_fit_to_schema(table_path: str, create_table_query: str) -> Iterator[pd.DataFrame]:
+    column_defs, column_types = _parse_column_defs(create_table_query)
+    source_file = table_path.split('/')[-1]
+    
+    for chunk in pd.read_csv(
+        table_path, 
+        encoding='ISO-8859-1', 
+        sep=';', 
+        quoting=3, 
+        on_bad_lines='skip',
+        chunksize=CSV_CHUNK_SIZE,
+        low_memory=True
+    ):
+        yield _fit_chunk_to_schema(chunk, column_defs, column_types, source_file)
+        gc.collect()
+
+
+def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.DataFrame:
+    """Versão que retorna DataFrame completo (para compatibilidade). Use create_df_chunks_and_fit_to_schema para arquivos grandes."""
+    chunks = list(create_df_chunks_and_fit_to_schema(table_path, create_table_query))
+    if not chunks:
+        column_defs, column_types = _parse_column_defs(create_table_query)
+        return pd.DataFrame(columns=list(column_types.keys()))
+    result = pd.concat(chunks, ignore_index=True)
+    del chunks
+    gc.collect()
+    return result
 
 def associate_tables_and_schemas(table_files: List[str], schema_files: List[str]) -> List[Dict[str, str]]:
     result = []

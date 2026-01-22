@@ -6,6 +6,8 @@ import zipfile
 from typing import List, Optional
 from urllib.parse import urlparse
 
+DOWNLOAD_CHUNK_SIZE = 8192
+
 class FileManager:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
@@ -13,21 +15,28 @@ class FileManager:
     def download_file(self, url: str) -> Optional[str]:
         file_name = os.path.basename(urlparse(url).path)
         file_path = os.path.join(self.temp_dir, file_name)
-        response = requests.get(url)
-        if response.status_code == 200:
-            with open(file_path, 'wb') as file:
-                file.write(response.content)
-            return file_path
-        return None
+        try:
+            with requests.get(url, stream=True) as response:
+                if response.status_code == 200:
+                    with open(file_path, 'wb') as file:
+                        for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                            if chunk:
+                                file.write(chunk)
+                    return file_path
+            return None
+        except Exception as e:
+            print(f"Error downloading file: {str(e)}")
+            return None
 
     def unzip_file(self, zip_file_path: str) -> List[str]:
+        """Extrai arquivos ZIP um por um para minimizar uso de memória."""
         extraction_path = os.path.dirname(zip_file_path)
         extracted_files = []
         try:
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                for file in zip_ref.namelist():
-                    zip_ref.extract(file, extraction_path)
-                    extracted_files.append(os.path.join(extraction_path, file))
+                for file_info in zip_ref.infolist():
+                    zip_ref.extract(file_info, extraction_path)
+                    extracted_files.append(os.path.join(extraction_path, file_info.filename))
             return extracted_files
         except Exception as e:
             print(f"Error unzipping file: {str(e)}")

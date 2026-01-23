@@ -94,8 +94,8 @@ def create_table_query(schema_path: str) -> str:
             entries = field.split('\n')
             field_dict = {}
             for entry in entries:
-                if set(entry) != set('-'):
-                    key, value = entry.split(':')
+                if set(entry) != set('-') and ':' in entry:
+                    key, value = entry.split(':', 1)
                     field_dict[key.strip()] = value.strip()
             result.append(field_dict)
         return result

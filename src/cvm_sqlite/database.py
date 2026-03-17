@@ -3,7 +3,7 @@ import pandas as pd
 import sqlite3
 from typing import List, Tuple, Any, Optional, Iterator
 
-INSERT_CHUNK_SIZE = 5000  # Linhas por batch de inserção
+INSERT_CHUNK_SIZE = 5000
 
 class Database:
     def __init__(self, db_path: str, verbose: bool = False):

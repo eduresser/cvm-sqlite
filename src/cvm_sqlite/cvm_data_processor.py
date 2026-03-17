@@ -65,13 +65,13 @@ class CVMDataProcessor:
         try:
             current_db_files = self.db.query("SELECT * FROM files")
             current_df_files = pd.DataFrame(current_db_files, columns=new_df_files.columns)
-            del current_db_files  # Libera lista original
+            del current_db_files
             current_df_files['last_update'] = pd.to_datetime(current_df_files['last_update'])
 
             diff_df = new_df_files[new_df_files.apply(lambda row: self._row_diff(row, current_df_files), axis=1)]
             pending_df = current_df_files[current_df_files['status'] == 'PENDING']
             
-            del current_df_files  # Libera DataFrame intermediário
+            del current_df_files
             gc.collect()
             
             result_df = pd.concat([diff_df, pending_df], ignore_index=True)
@@ -107,7 +107,6 @@ class CVMDataProcessor:
                 schema_files = self._download_schema_files(meta)
                 completed_urls = self._process_data_files(dados, schema_files)
                 self.file_manager.cleanup()
-                # Só marca como COMPLETE os URLs que foram processados com sucesso
                 if completed_urls:
                     self.db._update_files_status(completed_urls + meta, 'url', 'COMPLETE')
 
@@ -156,11 +155,8 @@ class CVMDataProcessor:
         if self.verbose: print(f"\nInserting data from '{source_file}'.")
         
         self.db._create_table_if_not_exists(table_name, schema)
-        
-        # Transação atômica: ou insere tudo ou nada
         self.db.begin_transaction()
         try:
-            # Deleta registros existentes deste source_file antes de inserir
             self.db._delete_by_source_file(table_name, source_file)
             
             total_rows = 0
@@ -170,11 +166,9 @@ class CVMDataProcessor:
                 del df_chunk
                 gc.collect()
             
-            # Commit apenas após todos os chunks serem inseridos
             self.db.commit()
             if self.verbose: print(f"Total: {total_rows} records processed.")
         except Exception as e:
-            # Se falhar em qualquer chunk, desfaz tudo
             self.db.rollback()
             print(f"Error processing '{source_file}': {str(e)}. Transaction rolled back.")
             raise

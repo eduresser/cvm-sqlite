@@ -129,7 +129,6 @@ def create_table_query(schema_path: str) -> str:
     return generate_query(table_name, structured_schema)
 
 def _parse_column_defs(create_table_query: str) -> Tuple[List[Tuple[str, str]], Dict[str, str]]:
-    """Extrai definições de colunas e tipos do schema."""
     column_defs = re.findall(r'(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)', create_table_query)[1:]
     
     column_types = {}
@@ -233,7 +232,6 @@ def create_df_chunks_and_fit_to_schema(table_path: str, create_table_query: str)
 
 
 def create_df_and_fit_to_schema(table_path: str, create_table_query: str) -> pd.DataFrame:
-    """Versão que retorna DataFrame completo (para compatibilidade). Use create_df_chunks_and_fit_to_schema para arquivos grandes."""
     chunks = list(create_df_chunks_and_fit_to_schema(table_path, create_table_query))
     if not chunks:
         column_defs, column_types = _parse_column_defs(create_table_query)

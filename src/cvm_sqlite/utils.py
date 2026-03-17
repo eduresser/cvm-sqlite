@@ -164,7 +164,6 @@ def _create_column_mapping(df_columns: List[str], schema_columns: List[str]) -> 
         if schema_col.lower() in df_cols_lower:
             mapping[df_cols_lower[schema_col.lower()]] = schema_col
     
-    # Segundo, verifica se um está contido no outro
     remaining_df_cols = [col for col in df_columns if col not in mapping]
     remaining_schema_cols = [col for col in schema_columns if col not in mapping.values()]
     
